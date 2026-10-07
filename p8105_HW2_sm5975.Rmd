@@ -84,3 +84,96 @@ nyctransit_tidy_df |>
 From the dataset provided we can see that, `r nyctransit_tidy_df |> filter(route_name == "A") |> distinct(station_name, line) |> nrow()` distinct stations serve the A train.
 
 Of the stations that serve the A train, `r nyctransit_tidy_df |> filter(route_name == "A", ada) |> distinct(station_name, line) |> nrow()` are ADA compliant.
+
+# Question 2
+
+```{r}
+#Read and Clean Mr. Trash Wheel sheet
+
+library(readxl)
+mrtrash_wheel_df =
+  read_excel(
+    "data/202610 Trash Wheel Collection Data.xlsx",
+    sheet = "Mr. Trash Wheel",
+    range = "A2:N742"
+  ) |>
+  janitor::clean_names() |> 
+ drop_na(dumpster) |>
+  mutate(sports_balls = as.integer(round(sports_balls)))
+```
+```{r}
+
+#Combining with Mr. Trash Wheel Dataset to produce a single tidy dataset
+library(tidyverse)
+library(readxl)
+
+mrtrash_wheel_df = 
+  read_excel(
+    "data/202610 Trash Wheel Collection Data.xlsx",
+    sheet = "Mr. Trash Wheel",
+    range = "A2:N742"
+  ) |>
+  janitor::clean_names() |> 
+ drop_na(dumpster) |>
+  mutate(
+    sports_balls = as.integer(round(sports_balls)),
+         year = as.integer (year),
+         month = str_trim(month),
+         trash_wheel = "Mr. Trash Wheel"
+  )
+
+proftrash_wheel_df =
+  read_excel(
+    "data/202610 Trash Wheel Collection Data.xlsx",
+    sheet = "Professor Trash Wheel",
+    range = "A2:M139",
+    col_types = c(
+      "numeric", "text", "numeric", "date", "numeric", "numeric",
+      "numeric", "numeric", "numeric", "numeric", "numeric", "numeric",
+      "numeric"
+    )
+  ) |>
+  janitor::clean_names() |>
+  drop_na(dumpster) |>
+  mutate(
+    year = as.integer(year),
+    month = str_trim(month),
+    trash_wheel = "Professor Trash Wheel"
+  )
+
+gwynndatr_df = 
+  read_excel(
+     "data/202610 Trash Wheel Collection Data.xlsx",
+     sheet = "Gwynnda the Good Wheel of the W",
+     range = "A2:L394"
+  ) |> 
+  janitor::clean_names() |> 
+  drop_na(dumpster) |> 
+  mutate(
+    year = as.integer(year),
+    month = str_trim(month),
+    trash_wheel = "Gwynnda"
+  )
+
+trash_wheel_df = 
+  bind_rows (mrtrash_wheel_df, proftrash_wheel_df, gwynndatr_df) |> 
+  relocate (trash_wheel)
+
+```
+```{r}
+ # the total weight of trash collected by Professor Trash Wheel
+prof_totalweight =
+  trash_wheel_df |>
+  filter(trash_wheel == "Professor Trash Wheel") |>
+  pull(weight_tons) |>
+  sum(na.rm = TRUE)
+
+#the total number of cigarette butts collected by Gwynnda in June of 2022
+gwynnda_2022cigg =
+  trash_wheel_df |>
+  filter(trash_wheel == "Gwynnda", month == "June", year == 2022) |>
+  pull(cigarette_butts) |>
+  sum(na.rm = TRUE)
+
+```
+The final combined dataset, `trash_wheel_df`, contains `r nrow(trash_wheel_df)` observations, where each observation is a single dumpster collection by Mr. Trash Wheel, Professor Trash Wheel, or Gwynnda, with `r ncol(trash_wheel_df)` variables. The data span `r year(min(trash_wheel_df$date))` to `r year(max(trash_wheel_df$date))`. Key variables include `trash_wheel` (which wheel collected the trash), `dumpster` (the dumpster number), `month`, `year`, and `date`, along with `weight_tons` and `volume_cubic_yards`, and counts of specific items such as `plastic_bottles`, `cigarette_butts`, `wrappers`, and `homes_powered`. The variable `sports_balls` is available only for Mr. Trash Wheel, and `glass_bottles` is not recorded for Gwynnda, so those values are `NA` in the combined data. For available data, Professor Trash Wheel collected a total of `r round(prof_totalweight, 2)` tons of trash. Gwynnda collected a total of `r format(gwynnda_2022cigg, big.mark = ",")` cigarette butts in June of 2022.
