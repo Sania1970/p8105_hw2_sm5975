@@ -1,0 +1,35 @@
+---
+title: "p8105_hw2_sm5975"
+author: "Sania Sheifuddin"
+date: "2026-10-07"
+output: github_document
+---
+
+Read and clean the data; retain line, station, name, station latitude / longitude, routes served, entry, vending, entrance type, and ADA compliance. Convert the entry variable from character (YES vs NO) to a logical variable (case_match function may be useful).
+
+Write a short paragraph about this dataset – explain briefly what variables the dataset contains, describe your data cleaning steps so far, and give the dimension (rows x columns) of the resulting dataset. Are these data tidy?
+
+# Question 1 
+```{r}
+library(tidyverse)
+nyctransit_df = 
+    read_csv(
+      "data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv", 
+      na = c("NA", ".", ""), 
+col_types = cols(Route8 = "c", Route9 = "c", Route10 = "c", Route11 = "c"))
+
+nyctransit_df =
+  nyctransit_df |>
+  janitor::clean_names() |>
+  select(
+    line, station_name, station_latitude, station_longitude,
+    route1:route11, entry, vending, entrance_type, ada
+  ) |>
+  mutate(entry = case_match(entry, "YES" ~ TRUE, "NO" ~ FALSE))
+      
+```
+This dataset consists of information on each entrance and exit of NYC subway situations. Variables included are the following:  station name, station latitude/longitude, routes served, subway line, whether the entrance allows entry, if there is vending, the entrance types and ADA compliance. 
+
+To clean the data further I standardized the variable names to only have the variables of interest. I also converted entry from a character variable to a logical variable. After I ran the chunk I observed that the final dataset has `r nrow(nyctransit_df)` rows and `r ncol(nyctransit_df)` columns. Since route information is from route 1 through route 11 the route number is stored in the column names. 
+
+
