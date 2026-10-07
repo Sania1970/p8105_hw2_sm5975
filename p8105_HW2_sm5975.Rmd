@@ -177,3 +177,76 @@ gwynnda_2022cigg =
 
 ```
 The final combined dataset, `trash_wheel_df`, contains `r nrow(trash_wheel_df)` observations, where each observation is a single dumpster collection by Mr. Trash Wheel, Professor Trash Wheel, or Gwynnda, with `r ncol(trash_wheel_df)` variables. The data span `r year(min(trash_wheel_df$date))` to `r year(max(trash_wheel_df$date))`. Key variables include `trash_wheel` (which wheel collected the trash), `dumpster` (the dumpster number), `month`, `year`, and `date`, along with `weight_tons` and `volume_cubic_yards`, and counts of specific items such as `plastic_bottles`, `cigarette_butts`, `wrappers`, and `homes_powered`. The variable `sports_balls` is available only for Mr. Trash Wheel, and `glass_bottles` is not recorded for Gwynnda, so those values are `NA` in the combined data. For available data, Professor Trash Wheel collected a total of `r round(prof_totalweight, 2)` tons of trash. Gwynnda collected a total of `r format(gwynnda_2022cigg, big.mark = ",")` cigarette butts in June of 2022.
+
+#Question 3 
+
+```{r}
+mci_df =
+  read_csv(
+    "data/data_mci/MCI_baseline.csv",
+    skip = 1,
+    na = "."
+  ) |>
+  janitor::clean_names() |>
+  mutate(
+    sex = replace(sex, sex == 0, "Female"),
+    sex = replace(sex, sex == 1, "Male"),
+    sex = factor(sex),
+    apoe4 = replace(apoe4, apoe4 == 0, "Non-carrier"),
+    apoe4 = replace(apoe4, apoe4 == 1, "Carrier"),
+    apoe4 = factor(apoe4))
+
+mcibase_df =
+  mci_df |>
+  filter(is.na(age_at_onset) | age_at_onset > current_age)
+
+#  Number of participants recruited, and of these how many develop MCI
+n_recruit = nrow(mci_df)
+n_eligible = nrow(mcibase_df)
+n_develop_mci = sum(!is.na(mcibase_df$age_at_onset))
+
+# Average Baseline age 
+mean_baseline_age = mean(mcibase_df$current_age)
+
+#Proportion of women in the study that are APOE4 carrier
+prop_women_apoe4 =
+  mcibase_df |>
+  filter(sex == "Female") |>
+  summarize(prop = mean(apoe4 == "Carrier")) |>
+  pull(prop)
+```
+I did `skip = 1` as the baseline dataset required to bypass a row of variable descriptions, and `na = "."` to point out missing ages at MCI onset which are coded as periods. Sex and APOE4 carrier status were recoded to labeled factors. `r n_recruit` participants were recruited. Participants whose age at MCI onset was at or before their baseline age already had MCI at baseline and were hence removed, leaving `r n_eligible` eligible participants. Of these, `r n_develop_mci` developed MCI during follow-up. The average baseline age was `r round(mean_baseline_age, 2)` years, and `r round(prop_women_apoe4, 3)` of women in the study were APOE4 carriers.
+
+```{r}
+
+mciamyloid_df = 
+  read_csv(
+    "data/data_mci/MCI_amyloid.csv",
+    skip = 1,
+    na = c("NA", "Na")) |> 
+    janitor::clean_names() |> 
+    rename (id= study_id) |> 
+  pivot_longer(
+    baseline:time_8,
+    names_to = "time",
+    names_prefix = "time_",
+    values_to = "amyloid_ratio") |> 
+  mutate(
+    time =replace (time, time =="baseline","0"),
+    time = as.numeric(time))
+print(mciamyloid_df, n = 12)
+
+```
+The first row of biomarker file contains a description of the time variables, so it was skipped with `skip = 1` to make it more concise, and this consequently makes the second row the header. The missing biomarker values appear under both, "NA" and "Na", so both are technically missing. If not for that, the amyloid columns would then be read as character. Variable names were standardized with `clean_names()`, and the `study_id` was renamed `id`as that was what it was reffered to on dataset. The data were originally wide, with one column per visit (baseline, then 2, 4, 6, and 8 years after baseline), so they were turned into long format with a `time` variable and an `amyloid_ratio` variable. The resulting dataset has `r n_distinct(mciamyloid_df$id)` participants and `r nrow(mciamyloid_df)` rows, one per participant per visit. Many measurements are missing (`r sum(is.na(mciamyloid_df$amyloid_ratio))`), and participants do not all have the same visits, so follow-up is unbalanced.
+
+```{r}
+# Participants who appear only in baseline data 
+anti_join(mcibase_df, mciamyloid_df, by = "id") |>
+  distinct(id)
+
+# Participants who appear only in amyloid data 
+anti_join(mciamyloid_df, mcibase_df, by = "id") |>
+  distinct(id)
+```
+
+Not everyone appear in both datasets. `r nrow(distinct(anti_join(mcibase_df, mciamyloid_df, by = "id"), id))` participants (IDs 14, 49, 92, 179, 268, 304, 389, and 412) have baseline demographics but no biomarker data, and `r nrow(distinct(anti_join(mciamyloid_df, mcibase_df, by = "id"), id))` participants (IDs 484 to 495) have biomarker data but no baseline demographics. The amyloid-only participants cannot be checked against the inclusion criteria, since their age, sex, APOE4 status, and MCI history are unknown. This suggests the two files came from slightly different extracts of the study. Participants missing from either file cannot be used in analyses that need both demographics and biomarkers, so they are excluded when the datasets are combined.
