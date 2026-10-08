@@ -5,16 +5,14 @@ date: "2026-10-07"
 output: github_document
 ---
 
-Read and clean the data; retain line, station, name, station latitude / longitude, routes served, entry, vending, entrance type, and ADA compliance. Convert the entry variable from character (YES vs NO) to a logical variable (case_match function may be useful).
-
-Write a short paragraph about this dataset – explain briefly what variables the dataset contains, describe your data cleaning steps so far, and give the dimension (rows x columns) of the resulting dataset. Are these data tidy?
+## Loading necessary libraries for this assignment 
 
 # Question 1 
 ```{r}
 library(tidyverse)
 nyctransit_df = 
     read_csv(
-      "data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv", 
+      "./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv", 
       na = c("NA", ".", ""), 
 col_types = cols(Route8 = "c", Route9 = "c", Route10 = "c", Route11 = "c"))
 
@@ -28,9 +26,9 @@ nyctransit_df =
   mutate(entry = case_match(entry, "YES" ~ TRUE, "NO" ~ FALSE))
       
 ```
-This dataset consists of information on each entrance and exit of NYC subway situations. Variables included are the following:  station name, station latitude/longitude, routes served, subway line, whether the entrance allows entry, if there is vending, the entrance types and ADA compliance. 
+This dataset consists of information on each entrance and exit of NYC subway stations. Variables included are the following:  station name, station latitude/longitude, routes served, subway line, whether the entrance allows entry, if there is vending, the entrance types and ADA compliance.  Since route information is from route 1 through route 11 the route number is stored in the column names. These data are not tidy, because route information is spread across 11 columns.To get a tidy dataset we need to convert `route`variables from wide to long format. This is helpful when considering specific routes but is not required when considering questions that focus on variables like station-level.
 
-To clean the data further I standardized the variable names to only have the variables of interest. I also converted entry from a character variable to a logical variable. After I ran the chunk I observed that the final dataset has `r nrow(nyctransit_df)` rows and `r ncol(nyctransit_df)` columns. Since route information is from route 1 through route 11 the route number is stored in the column names. 
+To clean the data further I standardized the variable names to only have the variables of interest. I also converted entry from a character variable to a logical variable. After I ran the chunk I observed that the final dataset has `r nrow(nyctransit_df)` rows and `r ncol(nyctransit_df)` columns.
 
 ```{r}
 nyctransit_df |>
@@ -54,7 +52,7 @@ nyctransit_df |>
   pull(entry) |>
   mean()
 ```
-The proportion of entrances/exits without vending that allow entry is `r round(mean(filter(nyctransit_df, vending == "NO")$entry), 3)`.
+The proportion of entrances/exits without vending that allow entry is `r round(mean(pull(filter(nyctransit_df, vending == "NO"), entry)), 3)`.
 
 ```{r}
 #Reformatting data so that route number and route name are distinct variables
@@ -102,14 +100,10 @@ mrtrash_wheel_df =
   mutate(sports_balls = as.integer(round(sports_balls)))
 ```
 ```{r}
-
 #Combining with Mr. Trash Wheel Dataset to produce a single tidy dataset
-library(tidyverse)
-library(readxl)
-
 mrtrash_wheel_df = 
   read_excel(
-    "data/202610 Trash Wheel Collection Data.xlsx",
+    "./data/202610 Trash Wheel Collection Data.xlsx",
     sheet = "Mr. Trash Wheel",
     range = "A2:N742"
   ) |>
@@ -121,7 +115,10 @@ mrtrash_wheel_df =
          month = str_trim(month),
          trash_wheel = "Mr. Trash Wheel"
   )
+```
 
+
+```{r}
 proftrash_wheel_df =
   read_excel(
     "data/202610 Trash Wheel Collection Data.xlsx",
@@ -140,10 +137,12 @@ proftrash_wheel_df =
     month = str_trim(month),
     trash_wheel = "Professor Trash Wheel"
   )
+```
 
+```{r}
 gwynndatr_df = 
   read_excel(
-     "data/202610 Trash Wheel Collection Data.xlsx",
+     "./data/202610 Trash Wheel Collection Data.xlsx",
      sheet = "Gwynnda the Good Wheel of the W",
      range = "A2:L394"
   ) |> 
@@ -154,7 +153,9 @@ gwynndatr_df =
     month = str_trim(month),
     trash_wheel = "Gwynnda"
   )
+```
 
+```{r}
 trash_wheel_df = 
   bind_rows (mrtrash_wheel_df, proftrash_wheel_df, gwynndatr_df) |> 
   relocate (trash_wheel)
@@ -176,14 +177,14 @@ gwynnda_2022cigg =
   sum(na.rm = TRUE)
 
 ```
-The final combined dataset, `trash_wheel_df`, contains `r nrow(trash_wheel_df)` observations, where each observation is a single dumpster collection by Mr. Trash Wheel, Professor Trash Wheel, or Gwynnda, with `r ncol(trash_wheel_df)` variables. The data span `r year(min(trash_wheel_df$date))` to `r year(max(trash_wheel_df$date))`. Key variables include `trash_wheel` (which wheel collected the trash), `dumpster` (the dumpster number), `month`, `year`, and `date`, along with `weight_tons` and `volume_cubic_yards`, and counts of specific items such as `plastic_bottles`, `cigarette_butts`, `wrappers`, and `homes_powered`. The variable `sports_balls` is available only for Mr. Trash Wheel, and `glass_bottles` is not recorded for Gwynnda, so those values are `NA` in the combined data. For available data, Professor Trash Wheel collected a total of `r round(prof_totalweight, 2)` tons of trash. Gwynnda collected a total of `r format(gwynnda_2022cigg, big.mark = ",")` cigarette butts in June of 2022.
+The final combined dataset, `trash_wheel_df`, contains `r nrow(trash_wheel_df)` observations, where each observation is a single dumpster collection by Mr. Trash Wheel, Professor Trash Wheel, or Gwynnda, with `r ncol(trash_wheel_df)` variables. The data span `r trash_wheel_df |> pull(date) |> min() |> year()` to `r trash_wheel_df |> pull(date) |> max() |> year()`. Key variables include `trash_wheel` (which wheel collected the trash), `dumpster` (the dumpster number), `month`, `year`, and `date`, along with `weight_tons` and `volume_cubic_yards`, and counts of specific items such as `plastic_bottles`, `cigarette_butts`, `wrappers`, and `homes_powered`. The variable `sports_balls` is available only for Mr. Trash Wheel, and `glass_bottles` is not recorded for Gwynnda, so those values are `NA` in the combined data. For available data, Professor Trash Wheel collected a total of `r round(prof_totalweight, 2)` tons of trash. Gwynnda collected a total of `r format(gwynnda_2022cigg, big.mark = ",")` cigarette butts in June of 2022.
 
-#Question 3 
+# Question 3 
 
 ```{r}
 mci_df =
   read_csv(
-    "data/data_mci/MCI_baseline.csv",
+    "./data/data_mci/MCI_baseline.csv",
     skip = 1,
     na = "."
   ) |>
@@ -195,19 +196,34 @@ mci_df =
     apoe4 = replace(apoe4, apoe4 == 0, "Non-carrier"),
     apoe4 = replace(apoe4, apoe4 == 1, "Carrier"),
     apoe4 = factor(apoe4))
+```
 
+```{r}
 mcibase_df =
   mci_df |>
   filter(is.na(age_at_onset) | age_at_onset > current_age)
+```
 
+
+```{r}
 #  Number of participants recruited, and of these how many develop MCI
 n_recruit = nrow(mci_df)
 n_eligible = nrow(mcibase_df)
-n_develop_mci = sum(!is.na(mcibase_df$age_at_onset))
+n_develop_mci =
+  mcibase_df |>
+  filter(is.na(age_at_onset) == FALSE) |>
+  nrow()
+```
 
+```{r}
 # Average Baseline age 
-mean_baseline_age = mean(mcibase_df$current_age)
+mean_baseline_age =
+  mcibase_df |>
+  summarize(mean_age = mean(current_age)) |>
+  pull(mean_age)
+```
 
+```{r}
 #Proportion of women in the study that are APOE4 carrier
 prop_women_apoe4 =
   mcibase_df |>
@@ -221,7 +237,7 @@ I did `skip = 1` as the baseline dataset required to bypass a row of variable de
 
 mciamyloid_df = 
   read_csv(
-    "data/data_mci/MCI_amyloid.csv",
+    "./data/data_mci/mci_amyloid.csv",
     skip = 1,
     na = c("NA", "Na")) |> 
     janitor::clean_names() |> 
@@ -237,7 +253,7 @@ mciamyloid_df =
 print(mciamyloid_df, n = 12)
 
 ```
-The first row of biomarker file contains a description of the time variables, so it was skipped with `skip = 1` to make it more concise, and this consequently makes the second row the header. The missing biomarker values appear under both, "NA" and "Na", so both are technically missing. If not for that, the amyloid columns would then be read as character. Variable names were standardized with `clean_names()`, and the `study_id` was renamed `id`as that was what it was reffered to on dataset. The data were originally wide, with one column per visit (baseline, then 2, 4, 6, and 8 years after baseline), so they were turned into long format with a `time` variable and an `amyloid_ratio` variable. The resulting dataset has `r n_distinct(mciamyloid_df$id)` participants and `r nrow(mciamyloid_df)` rows, one per participant per visit. Many measurements are missing (`r sum(is.na(mciamyloid_df$amyloid_ratio))`), and participants do not all have the same visits, so follow-up is unbalanced.
+The first row of biomarker file contains a description of the time variables, so it was skipped with `skip = 1` to make it more concise, and this consequently makes the second row the header. The missing biomarker values appear under both, "NA" and "Na", so both are technically missing. If not for that, the amyloid columns would then be read as character. Variable names were standardized with `clean_names()`, and the `study_id` was renamed `id`as that was what it was refered to on dataset. The data were originally wide, with one column per visit (baseline, then 2, 4, 6, and 8 years after baseline), so they were turned into long format with a `time` variable and an `amyloid_ratio` variable. The resulting dataset has `r mciamyloid_df |> distinct(id) |> nrow()` participants and `r nrow(mciamyloid_df)` rows, one per participant per visit. Many measurements are missing (`r mciamyloid_df |> filter(is.na(amyloid_ratio)) |> nrow()`), and participants do not all have the same visits, so follow-up is unbalanced.
 
 ```{r}
 # Participants who appear only in baseline data 
@@ -248,5 +264,13 @@ anti_join(mcibase_df, mciamyloid_df, by = "id") |>
 anti_join(mciamyloid_df, mcibase_df, by = "id") |>
   distinct(id)
 ```
+```{r}
+#Combining the demographic and bio marker datasets 
+mci_combined_df =
+  inner_join(mcibase_df, mciamyloid_df, by = "id")
 
-Not everyone appear in both datasets. `r nrow(distinct(anti_join(mcibase_df, mciamyloid_df, by = "id"), id))` participants have baseline demographics but no biomarker data, and `r nrow(distinct(anti_join(mciamyloid_df, mcibase_df, by = "id"), id))` participants (IDs 484 to 495) have biomarker data but no baseline demographics. The amyloid-only participants cannot be checked against the inclusion criteria, since their age, sex, APOE4 status, and MCI history are unknown. This suggests the two files came from slightly different extracts of the study. Participants missing from either file cannot be used in analyses that need both demographics and biomarkers, so they are excluded when the datasets are combined.
+write_csv(mci_combined_df, "./data//mci_combined.csv")
+```
+All participants don't appear in both datasets. `r anti_join(mci_df, mciamyloid_df, by = "id") |> distinct(id) |> nrow()` participants have baseline demographics but no biomarker data, and `r anti_join(mciamyloid_df, mci_df, by = "id") |> distinct(id) |> nrow()` participants have biomarker data but no baseline demographics.Since the amyloid participants age, sex, APOE4 status, and MCI history are unknown, the amyloid-only individuals cannot be checked against their own inclusion criteria. This suggests the two files came from different extracts of the study. Participants missing from either file are excluded when the datasets are combined.
+
+The combined datasetincludes `r mci_combined_df |> distinct(id) |> nrow()` participants and `r nrow(mci_combined_df)` rows, one per participant per visit, with `r ncol(mci_combined_df)` The variables are as follows: participant ID, baseline age, sex, years of education, APOE4 carrier status, age at MCI onset, time since baseline in years, and the amyloid ratio. Of the `r nrow(mci_combined_df)` possible biomarker measurements, `r mci_combined_df |> filter(is.na(amyloid_ratio)) |> nrow()` are missing. `r mci_combined_df |> distinct(id, age_at_onset) |> drop_na(age_at_onset) |> nrow()` of these participants developed MCI during follow-up. The combined dataset was exported to `data/mci_combined.csv`.
